@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <ftw.h>
 #include <locale.h>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/file.h>
@@ -242,11 +242,35 @@ static void init()
 
 static std::string sha256(size_t data_size, const void* data)
 {
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, data, data_size);
-    SHA256_Final(hash, &sha256);
+    unsigned char hash[EVP_MAX_MD_SIZE]; // EVP_MAX_MD_SIZE is enough for any hash length
+    unsigned int length_of_hash = 0;
+
+    // Create and initialize the context
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
+    if (!context) {
+        throw std::runtime_error("Failed to create EVP_MD_CTX");
+    }
+
+    // Initialize the digest operation for SHA-256
+    if (EVP_DigestInit_ex(context, EVP_sha256(), NULL) != 1) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Failed to initialize SHA-256 digest");
+    }
+
+    // Update the context with the data
+    if (EVP_DigestUpdate(context, data, data_size) != 1) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Failed to update SHA-256 digest");
+    }
+
+    // Finalize the digest and obtain the result
+    if (EVP_DigestFinal_ex(context, hash, &length_of_hash) != 1) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Failed to finalize SHA-256 digest");
+    }
+
+    // Clean up
+    EVP_MD_CTX_free(context);
 
     std::string retval;
     retval.reserve(2 * sizeof(hash) + 1);
