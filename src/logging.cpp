@@ -230,7 +230,7 @@ void log_message(sgx_ql_log_level_t level, const char* message)
 //
 void log(sgx_ql_log_level_t level, const char* fmt, ...)
 {
-    char message[512];
+    char message[2048];
     va_list args;
     va_start(args, fmt);
 #pragma warning(suppress : 25141) // all fmt buffers come from static strings
